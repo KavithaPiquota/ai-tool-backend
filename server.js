@@ -4,6 +4,8 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const { search } = require('./searchConnector');
+const { scrapeWithPuppeteer } = require('./scrapeConnector');
 require('dotenv').config();
 
 const app = express();
@@ -161,6 +163,39 @@ app.get('/api/search-history', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching search history:', error);
     res.status(500).send({ message: 'Server error', error: error.message });
+  }
+});
+
+
+
+app.get('/api/search', async (req, res) => {
+  const { engine, query, limit } = req.query;
+
+  if (!query || !engine) {
+      return res.status(400).json({ error: 'Missing engine or query' });
+  }
+
+  try {
+      const results = await search(engine, query, parseInt(limit) || 5);
+      res.json({ results });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/scrape', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+  }
+
+  try {
+      const data = await scrapeWithPuppeteer(url);
+      res.json(data);
+  } catch (error) {
+      console.error(error.message);
+      res.status(500).json({ error: 'Failed to scrape content' });
   }
 });
 app.listen(port, '0.0.0.0', () => console.log(`🚀 Backend running on port ${port}`));
